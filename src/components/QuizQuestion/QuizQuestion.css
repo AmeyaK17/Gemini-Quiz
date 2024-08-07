@@ -1,0 +1,21 @@
+.question h3 {
+    margin-top: 0;
+}
+
+.options {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    margin-bottom: 5px;
+    border: 1px solid #ddd;
+    border-radius: 30px;
+    align-items: center;
+    text-align: center;
+    border-style: none;
+    margin-bottom: 10px;
+}
+
+.options:hover {
+    background-color: black;
+    color: white;
+}
