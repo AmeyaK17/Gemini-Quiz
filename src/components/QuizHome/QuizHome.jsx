@@ -13,19 +13,21 @@ const QuizHome = () => {
         score, setScore,
         userAnswers, setUserAnswers,
         analyzeQuiz,
-        performanceScores,
+        userAnalytics,
+        sendPrompt,
+        numberOfQuestions,
+        difficulty
         
     } = useContext(GeminiContext)
 
     useEffect(() => {
         if (selectedOption !== null) {
             if (selectedOption === questions[currentQuestionIndex].answer) {
-                setScore(score + 1);
+                setScore(prevScore => prevScore + 1);
             }
             setSelectedOption(null);
             setCurrentQuestionIndex(currentQuestionIndex + 1);
             setUserAnswers([...userAnswers, selectedOption]);
-            console.log(userAnswers)
         }}, [selectedOption]
     );
 
@@ -40,14 +42,35 @@ const QuizHome = () => {
     }, [currentQuestionIndex]);
 
     if (questions.length > 0 && currentQuestionIndex >= questions.length) {
+        const { performanceScores = [], userMessage = "", suggestedTopics = [] } = userAnalytics || {};
+
         return (
             <>
                 <div className="quiz-home">
-                    <p>Your score: {score}</p>
-                    <div>
+                    <p>Your score: {score} / {numberOfQuestions}</p>
+                    <h4>{userAnalytics.userMessage}</h4>
+
+                    <hr />
+                    
+                    <div className='bar-graph'>
                         <h1>Your Performance</h1>
-                        <CustomBarChart performanceScores={performanceScores}/>
+                        <CustomBarChart performanceScores={userAnalytics.performanceScores}/>
                     </div>
+
+                    <hr />
+
+                    <h4>Suggested Topics</h4>
+                    <div className='suggested-topics'>
+                            {suggestedTopics.length > 0 ? (suggestedTopics.map((topic, index) => (
+                                <div onClick={async () => await sendPrompt(topic, numberOfQuestions, difficulty)} className='suggested-topic' key={index}>
+                                    {topic}
+                                </div>
+                            )))
+                            :
+                                <h4>Suggesting...</h4>
+                            }
+                    </div>
+                    
                 </div>
             </>
         );

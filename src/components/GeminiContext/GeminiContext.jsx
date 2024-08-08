@@ -16,14 +16,13 @@ const GeminiContextProvider = (props) => {
   const [uploadedImage, setUploadedImage] = useState(null)
   const [topics, setTopics] = useState(['Math', 'Science', 'History', 'Geography'])
   const [userAnswers, setUserAnswers] = useState([])
-  const [performanceScores, setPerformanceScores] = useState([])
-  const [suggestedTopics, setSuggestedTopics] = useState([])
+  const [userAnalytics, setUserAnalytics] = useState({})
 
   const sendPrompt = async (topic, numberOfQuestions, difficulty) => {
     let quizPrompt = `Give me a list of ${numberOfQuestions} questions on the topic: ${topic}.
         The difficulty of each of the questions should be ${difficulty}. 
         Difficulty 1 is the easiest while difficulty 10 is the hardest. 
-        For each of the questions give me 4 options of which 1 is the write answer. 
+        For each of the questions give me 4 options of which 1 is the write answer. Shuffle the options. Mention the correct option at first, second, third or fourth pplace randomly for each question.
         Give the correct answers for each questions as well.
         The format of the response should be as follows:
         The first line of the question should contain the question.
@@ -53,19 +52,29 @@ const GeminiContextProvider = (props) => {
     parseQuestions(response)
     setLoading(false)
     setQuizTopic(topic)
-    setSelectedOption(null)
     setCurrentQuestionIndex(0);
     setScore(0);
+    setSelectedOption(null)
   }
 
   const parseQuestions = (response) => {
     const questions = [];
     const lines = response.trim().split('\n');
 
+    const shuffleArray = (array) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    };
+
     for (let i = 0; i < lines.length; i += 4) {
       const questionText = lines[i].trim();
-      const optionsText = lines[i + 1].trim().split(';');
+      let optionsText = lines[i + 1].trim().split(';');
       const answerText = lines[i + 2].trim();
+
+      optionsText = shuffleArray(optionsText);
 
       questions.push({
         question: questionText,
@@ -152,7 +161,19 @@ const GeminiContextProvider = (props) => {
     Subtopic 1: score
     Subtopic 2: score
 
-    Also return a message for the user about their performance in one line.
+    Leave a line empty and then return a message for the user about their performance in short. Write the message in second person.
+
+    Leave a line and return atmost 5 suggested subtopics or topics related to the current quiz that the user can further practice and take quizes on.
+    Each of the suggested topics should be on the new line.
+
+    Therefore, your final output should look like this:
+    Subtopic 1: score
+    Subtopic 2: score
+
+    User Message
+
+    Suggested Topic 1
+    Suggested Topic 2
 
     Do not include any other text other than the subtopics, their scores and the user message.
     `
@@ -173,20 +194,37 @@ const GeminiContextProvider = (props) => {
   }
 
   const parseSubtopicsAndScores = (response) => {
-    console.log("Entered parseSubtopicsAndScores")
-    const userScores = [];
-    const lines = response.split('\n');
-
-    lines.forEach(line => {
-        const match = line.match(/^(.*?): (\d+)$/);
-        if (match) {
-            const name = match[1].trim();
-            const score = parseInt(match[2].trim(), 10);
-            userScores.push({ name, score });
-        }
-    });
-
-    setPerformanceScores(userScores)
+    const userAnalytics = {
+      performanceScores: [],
+      userMessage: "",
+      suggestedTopics: []
+    };
+  
+    const lines = response.trim().split('\n');
+    let i = 0;
+  
+    while (i < lines.length && lines[i].trim() !== "") {
+      const [name, score] = lines[i].split(':').map(str => str.trim());
+      userAnalytics.performanceScores.push({ name, score: parseInt(score) });
+      i++;
+    }
+  
+    i++;
+  
+    while (i < lines.length && lines[i].trim() !== "") {
+      userAnalytics.userMessage += lines[i] + " ";
+      i++;
+    }
+  
+    i++;
+  
+    while (i < lines.length) {
+      userAnalytics.suggestedTopics.push(lines[i].trim());
+      i++;
+    }
+  
+    userAnalytics.userMessage = userAnalytics.userMessage.trim();
+    setUserAnalytics(userAnalytics)
   }
 
   const geminiContextValue = {
@@ -205,7 +243,7 @@ const GeminiContextProvider = (props) => {
     topics,
     userAnswers, setUserAnswers,
     analyzeQuiz,
-    performanceScores
+    userAnalytics
   }
 
   return (
