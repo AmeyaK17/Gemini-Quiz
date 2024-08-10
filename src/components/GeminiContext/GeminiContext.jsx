@@ -1,5 +1,5 @@
 import React, { createContext, useState } from 'react'
-import { runGemini, runGeminiImage, runGeminiQuizAnalysis } from '../../geminiConfig/gemini';
+import { runGemini, runGeminiImage, runGeminiQuizAnalysis, runGeminiRoadMapJSON, runGeminiRoadMapJSONForTopic } from '../../geminiConfig/gemini';
 
 export const GeminiContext = createContext();
 
@@ -17,6 +17,7 @@ const GeminiContextProvider = (props) => {
   const [topics, setTopics] = useState(['Math', 'Science', 'History', 'Geography'])
   const [userAnswers, setUserAnswers] = useState([])
   const [userAnalytics, setUserAnalytics] = useState({})
+  const [roadmapData, setRoadmapData] = useState({})
 
   const sendPrompt = async (topic, numberOfQuestions, difficulty) => {
     let quizPrompt = `Give me a list of ${numberOfQuestions} questions on the topic: ${topic}.
@@ -26,7 +27,7 @@ const GeminiContextProvider = (props) => {
         Give the correct answers for each questions as well.
         The format of the response should be as follows:
         The first line of the question should contain the question.
-        The second line, should contain four options separeted by a ;.
+        The second line, should contain four options separeted by a ';'.
         The third line, should contain the correct answer.
         The next line should be empty.
         For example, the format should be like this:
@@ -227,6 +228,107 @@ const GeminiContextProvider = (props) => {
     setUserAnalytics(userAnalytics)
   }
 
+  const uploadedImageForRoadmap = async () => {
+    if (!uploadedImage) {
+      alert("Please select a file to upload.");
+      return;
+    }
+
+    const reader = new FileReader();
+    let prompt = `The file contains some subtopics of the main topic.
+    Identify the subtopics and the main topics. Determine the relations between them. Determine which topic should be learnt before moving to another topic.
+    Create a roadmap from these topics. The first topic should the topic which needs to be learnt first, then the second and so on.
+    Analyze it and return the topics for a roadmap.
+    The roadmap contains nodes which are the topics and edges which represent the connections between the topics.
+    The roadmap should be like a flow chart of the topics
+    Each node will have a width of 180px, and a height of 70px. Adjust the positions of each of the node accordingly. Do not let the nodes overlap. Have atleast 10px vertical and horzontal distance between each nodes.
+    Position the nodes hierarchically in a tree like structure.
+    Generate the JSON schema using the following template:
+    {
+      nodes: {
+        {
+          id: '1',          // Unique identifier for the node
+          data: { label: 'Node 1' },  // Data for the node, typically the label
+          position: { x: 100, y: 100 }, // Position on the canvas (optional, can be auto-calculated)
+          type: 'custom',
+        },
+        {
+          id: '2',
+          data: { label: 'Node 2' },
+          position: { x: 200, y: 200 },
+        },
+      },
+
+      edges: {
+        {
+          id: 'e1-2',      // Unique identifier for the edge
+          source: '1',     // ID of the source node
+          target: '2',     // ID of the target node
+          type: 'smoothstep', // Type of edge (e.g., 'default', 'smoothstep', 'straight', etc.)
+        },
+      }
+    }`
+
+    reader.onload = async (event) => {
+      const base64Data = event.target.result.split(',')[1];
+
+      const imageData = {
+        inlineData: {
+          data: base64Data,
+          mimeType: "image/png",
+        },
+      }
+
+      let response = await runGeminiRoadMapJSON(prompt, imageData)
+      console.log(response)
+      const graphData = JSON.parse(response);
+      setRoadmapData(graphData)
+    }
+
+    reader.readAsDataURL(uploadedImage);
+  }
+
+  const topicForRoadMap = async (topic) => {
+    let prompt = `The topic is: ${topic}.
+    Identify the subtopics which need to be learnt before learning the current topic. Determine the relations between them. Determine which topic should be learnt before moving to another topic.
+    Create a roadmap from these topics. The first topic should the topic which needs to be learnt first, then the second and so on.
+    Analyze it and return the topics for a roadmap.
+    The roadmap contains nodes which are the topics and edges which represent the connections between the topics.
+    The roadmap should be like a flow chart of the topics
+    Each node will have a width of 180px, and a height of 70px. Adjust the positions of each of the node accordingly. Do not let the nodes overlap. Have atleast 10px vertical and horzontal distance between each nodes.
+    Position the nodes hierarchically in a tree like structure.
+    Generate the JSON schema using the following template:
+    {
+      nodes: {
+        {
+          id: '1',          // Unique identifier for the node
+          data: { label: 'Node 1' },  // Data for the node, typically the label
+          position: { x: 100, y: 100 }, // Position on the canvas (optional, can be auto-calculated)
+          type: 'custom',
+        },
+        {
+          id: '2',
+          data: { label: 'Node 2' },
+          position: { x: 200, y: 200 },
+        },
+      },
+
+      edges: {
+        {
+          id: 'e1-2',      // Unique identifier for the edge
+          source: '1',     // ID of the source node
+          target: '2',     // ID of the target node
+          type: 'smoothstep', // Type of edge (e.g., 'default', 'smoothstep', 'straight', etc.)
+        },
+      }
+    }`
+
+    let response = await runGeminiRoadMapJSONForTopic(prompt)
+    console.log(response)
+    const graphData = JSON.parse(response);
+    setRoadmapData(graphData)
+  }
+
   const geminiContextValue = {
     showResult, setShowResult,
     loading, setLoading,
@@ -243,7 +345,10 @@ const GeminiContextProvider = (props) => {
     topics,
     userAnswers, setUserAnswers,
     analyzeQuiz,
-    userAnalytics
+    userAnalytics,
+    uploadedImageForRoadmap,
+    roadmapData,
+    topicForRoadMap
   }
 
   return (

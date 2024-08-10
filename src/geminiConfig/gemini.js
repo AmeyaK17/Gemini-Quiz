@@ -58,10 +58,33 @@ const runGeminiQuizAnalysis = async (prompt) => {
   const geminiQuizAnalysis = model.startChat({
     generationConfig,
     history: []
-  })
+})
 
   const result = await geminiQuizAnalysis.sendMessage(prompt);
   return result.response.text()
 }
 
-export {runGemini, runGeminiImage, runGeminiQuizAnalysis};
+const runGeminiRoadMapJSON = async (prompt, imageData) => {
+  let model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    // Set the `responseMimeType` to output JSON
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  let result = await model.generateContent([prompt, imageData])
+  // console.log(result.response.text());
+  return result.response.text();
+}
+
+const runGeminiRoadMapJSONForTopic = async (prompt) => {
+  let model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    // Set the `responseMimeType` to output JSON
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  let result = await model.generateContent([prompt])
+  return result.response.text();
+}
+
+export {runGemini, runGeminiImage, runGeminiQuizAnalysis, runGeminiRoadMapJSON, runGeminiRoadMapJSONForTopic};
